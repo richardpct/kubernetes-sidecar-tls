@@ -1,0 +1,23 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx
+spec:
+  selector:
+    app: nginx
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: haproxy
+spec:
+  selector:
+    app: haproxy
+  ports:
+  - protocol: TCP
+    port: 8443
+    targetPort: 8443

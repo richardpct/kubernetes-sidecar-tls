@@ -1,0 +1,106 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: config
+data:
+  haproxy.cfg: |
+    global
+      log stdout format raw local0 debug
+
+    defaults
+      mode http
+      timeout client 10s
+      timeout connect 5s
+      timeout server 10s
+      timeout http-request 10s
+      log global
+
+    frontend sidecar
+      bind *:8443 ssl crt /certs/haproxy.pem
+      default_backend fpm
+
+    backend fpm
+      use-fcgi-app phpapp
+      server fpm-default 127.0.0.1:9000 proto fcgi
+
+    fcgi-app phpapp
+      docroot /usr/share/nginx/html
+      index index.php 
+      path-info ^(/.+\.php)(/.*)?$
+
+  default.conf: |
+    server {
+        listen       8080;
+        listen  [::]:8080;
+        server_name  _;
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+
+        location ~ \.php$ {
+          proxy_pass https://haproxy:8443;
+        }
+    }
+  index.php: |
+    <?php
+    phpinfo();
+    ?>
+  haproxy.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIDmzCCAoOgAwIBAgIURnQY3S6D8brSo+Wq6NmyNcjZFBEwDQYJKoZIhvcNAQEL
+    BQAwdjELMAkGA1UEBhMCRlIxDDAKBgNVBAgMA0lERjEOMAwGA1UEBwwFUGFyaXMx
+    DDAKBgNVBAoMA1haWDELMAkGA1UECwwCSVQxEDAOBgNVBAMMB2hhcHJveHkxHDAa
+    BgkqhkiG9w0BCQEWDXRvdG9AdHV0dS5jb20wHhcNMjQwNDA3MTYxMDA0WhcNMjUw
+    NDA3MTYxMDA0WjB2MQswCQYDVQQGEwJGUjEMMAoGA1UECAwDSURGMQ4wDAYDVQQH
+    DAVQYXJpczEMMAoGA1UECgwDWFpYMQswCQYDVQQLDAJJVDEQMA4GA1UEAwwHaGFw
+    cm94eTEcMBoGCSqGSIb3DQEJARYNdG90b0B0dXR1LmNvbTCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBAN+CoET2SK9nEh0lImwOLuowPc3YZ/X7mMP34LCa
+    V8oC34MpJSsBcI31wVgbWYBWucr3MALFK9AxPJz0DtBRPqmQznsXB42jgGxUChCh
+    75zlUECs9zH4TaxeqtulMBg1e+EKDu9t42KV+0HeW2gfisBcFjpT7RbPGL/8JZu4
+    diGtWD59ULcBtrzk/vRXGbNmDnccFpX9yqjuAK06Hp7ryfnz1yds1gP4JnTGYmbH
+    apyWKOJ8mNOZg1JlnohEwHPX/02kB5DH6+YpplZnqgt4/P9pag5A25SiKBuiahPO
+    gDDdhljpgDIpci//AE+cU7ka5Rq3sY2Xue+xnbu4SEdRNs8CAwEAAaMhMB8wHQYD
+    VR0OBBYEFGDLfJ55YToOuoxSTPSGmwz0NypyMA0GCSqGSIb3DQEBCwUAA4IBAQCg
+    hFk0h2X5XT9XpnvZQb068PqnFdAeatuggAKandG3/dH6GrSec0QHOwh8P7YplMXJ
+    t+/a7/Z9jEZDuavBk4NId2znLZ4SquAaTRP/YcjJK8arvDdtkYBXYIVcxIa2Ip5A
+    sD36/Or+WHXJIbozhkzSPJFx07Y3O9TLxo9Kjlyk5heipCRLff1OPba/RhCJt6FC
+    N6crZgmb2uYLpXhWKp9/FLL9xdAyDTjDmwt0hnBP6TvR2kVjq8GP3Ewhs/pwBPC5
+    zFDROzpkvFZEH45ZBjAX/wTWvj0qIK6KdkbfVTo7YoEGlrjQGfpUu2cxXsJ1FInJ
+    vZBHz+sRpXvnxl5tHuNu
+    -----END CERTIFICATE-----
+    -----BEGIN PRIVATE KEY-----
+    MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDfgqBE9kivZxId
+    JSJsDi7qMD3N2Gf1+5jD9+CwmlfKAt+DKSUrAXCN9cFYG1mAVrnK9zACxSvQMTyc
+    9A7QUT6pkM57FweNo4BsVAoQoe+c5VBArPcx+E2sXqrbpTAYNXvhCg7vbeNilftB
+    3ltoH4rAXBY6U+0Wzxi//CWbuHYhrVg+fVC3Aba85P70VxmzZg53HBaV/cqo7gCt
+    Oh6e68n589cnbNYD+CZ0xmJmx2qclijifJjTmYNSZZ6IRMBz1/9NpAeQx+vmKaZW
+    Z6oLePz/aWoOQNuUoigbomoTzoAw3YZY6YAyKXIv/wBPnFO5GuUat7GNl7nvsZ27
+    uEhHUTbPAgMBAAECggEAXcyUlQxkmZPgYrHUXdOf9bE0JsB0dKNXS5qpxYOoZwNI
+    qOMqEX/DrBfgQakMqRL8WsTc9bSoe/FF1jqIQv1tljzKopaaGWNuAEhOhwdmpwoH
+    YXUVMnfZpQZ/nrkW03oSmHEfrnSH8jYuIUj/RFXEZZDf1S+mdqWH5f4cDFtf3CZ5
+    9V3dFMQ/5yvpU1WqB7t9/wtBn2yWTgEyGFZDG5fD3kJkqZAmma/Yr3Xf/9uemFM8
+    cRoTcchx3LHTGt+U8lcfYoMtuDjYki+yIgaAQQeLe0u83SCa3SNK5vbd60ny2xFX
+    rb8WsZf2nLRqtSdC+iVsKxBaF71guB5L7aU9Rb8x7QKBgQDvyZIESBtXLmm0xEx0
+    KRXJAsVjXQ2LcQSFFm0X28I371sA6gckl1Zcr4ak9ktrQGu+9qGgXCJjGO0m3LZs
+    jf/Dhpx0AxPaViqesOywGHb8Q7tu72uMmma4MY5QnObnbAreKgGjh253c1UkKR2j
+    iwloXqNhLM4MgnM9HYV0GuFNcwKBgQDun1F8ZBcgYnFmcbV+mNMKZTv3Wsex5nfF
+    lPuGSpRjbCoqpiQOjSxEifdj2A6WkUYEvcDNC+1uw2hIaq2ZbIi5KInjumUKsDQo
+    C5BHkU36gfMvCVsEQ+qw0hbrvOkhlxrxzHLnbzk2GxsdXsaBvTAHOPVsmnuuppgc
+    HyJ/tFeaNQKBgQCGVFuyflqiqmOZWuahpGqJ4z2E/poZ5cRscjXHSdsxzqsihfhe
+    bVF6NvKs8zUo7jvuDOhal4LEFTC1tquTgLEpbf2zmA3FIMRbhi3yMKJni+IysXmE
+    mPK2eTyKuHs6ZfJopwun+rTNwhSOX2I1PiyVBX9tbtY3d9TrBeC/PFe/NQKBgQCn
+    eRGLqAPDKtRD/hJPY5radOp9VC1LYmE1Pra5LaavkL6XaDtuKw6im+IRJRY3/oWR
+    1kt2naRqVKLgEF7+ivn6WcVNGwjHU5uHb3Y3hHeiFYpDvOEwQSp6JzkHAnLsrEyw
+    37jVTW5t1uBU4KuZatpGd2dobZPYo/ul4QQpdLz28QKBgQCdD15/oPm7wx3hB3Cz
+    TpaAZBWzJyV5eWnddOkse0KyqejG8EpE0Q2zOBhLBnrCagqxPNQA1FB2reNuyOgk
+    sVWRhL3gH5hBhA5YNIHBzwyPpoFebOSwegHBX/9SZmH/XorYokIaUsWDNRqE6qNT
+    JzJy97YNWqMjLl0L68jAZaeEVg==
+    -----END PRIVATE KEY-----

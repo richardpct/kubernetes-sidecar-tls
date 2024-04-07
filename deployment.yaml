@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: config
+        configMap:
+          name: config
+          defaultMode: 0644
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: haproxy
+  name: haproxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: haproxy
+  template:
+    metadata:
+      labels:
+        app: haproxy
+    spec:
+      containers:
+      - image: bitnami/php-fpm
+        name: fpm
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/nginx/html/index.php
+          subPath: index.php
+      - image: haproxy
+        name: haproxy
+        ports:
+        - containerPort: 8443
+        volumeMounts:
+        - name: config
+          mountPath: /usr/local/etc/haproxy/haproxy.cfg
+          subPath: haproxy.cfg
+        - name: config
+          mountPath: /certs/haproxy.pem
+          subPath: haproxy.pem
+      volumes:
+      - name: config
+        configMap:
+          name: config
+          defaultMode: 0644
